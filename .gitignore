@@ -1,2 +1,12 @@
 
 *.pdf
+*.h5
+lattice_notebooks/nlqm/data/.DS_Store
+lattice_notebooks/noisy_rabi/.DS_Store
+lattice_notebooks/noisy_rabi/data/.DS_Store
+lattice_notebooks/noisy_rabi/data/2021-12-28/.DS_Store
+lattice_notebooks/vaet/.DS_Store
+lattice_notebooks/vaet/data/.DS_Store
+lattice_notebooks/vaet/data/2021-12-28/.DS_Store
+lattice_notebooks/nlqm/.DS_Store
+lattice_notebooks/nlqm/2021-09-01/.DS_Store
