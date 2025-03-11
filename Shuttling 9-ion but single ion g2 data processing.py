@@ -141,7 +141,7 @@ End_time9 = Start_time9 + time_filtering/1e6
 
 # Number of bins and binwidth for correlation measurement
 number = int(750 * 1.7)
-binwidth_corr = 200 * 1e3
+binwidth_corr = 2000 * 1e3
 
 # Number of bins and binwidth for histogram measurement
 number_bins = 460 * 16
@@ -192,15 +192,18 @@ for data in raw_data:
     open_gate9 = TimeTagger.DelayedChannel(tagger=tagger, input_channel=trigger_channel, delay=Start_time9 * 1e6)
     open_gate_channel9 = open_gate9.getChannel()
 
-    open_gate = TimeTagger.Combiner(tagger=tagger, channels=[open_gate_channel1,
-                                                             open_gate_channel2,
-                                                             open_gate_channel3,
-                                                             open_gate_channel4,
-                                                             open_gate_channel5,
-                                                             open_gate_channel6,
-                                                             open_gate_channel7,
-                                                             open_gate_channel8,
-                                                             open_gate_channel9])
+    # open_gate = TimeTagger.Combiner(tagger=tagger, channels=[open_gate_channel1,
+    #                                                          open_gate_channel2,
+    #                                                          open_gate_channel3,
+    #                                                          open_gate_channel4,
+    #                                                          open_gate_channel5,
+    #                                                          open_gate_channel6,
+    #                                                          open_gate_channel7,
+    #                                                          open_gate_channel8,
+    #                                                          open_gate_channel9])
+
+    open_gate = TimeTagger.Combiner(tagger=tagger, channels=[open_gate_channel1])
+    
     open_gate_channel = open_gate.getChannel()
 
     close_gate = TimeTagger.DelayedChannel(tagger=tagger, input_channel=open_gate_channel, delay=time_filtering)
@@ -262,8 +265,8 @@ TimeTagger.freeTimeTagger(tagger)
 # np.save('data_final_corr_meas_'+formatted_string+'.npy', final_result)
 # np.save('index_final_corr_meas_'+formatted_string+'.npy', index)
 
-np.save('final_result_shuttling_9_ion_chain_1.npy', final_result)
-np.save('final_result_shuttling_9_ion_chain_index_1.npy', index)
+# np.save('final_result_shuttling_9_ion_chain_1.npy', final_result)
+# np.save('final_result_shuttling_9_ion_chain_index_1.npy', index)
 
 plt.figure(figsize = (10, 5))
 plt.plot(index, final_result)
