@@ -34,6 +34,10 @@ def load_and_plot_caled_data():
     # Initialize an array to store summed data
     summed_data = None
     
+    # Store all datasets and indices for combined plot
+    all_datasets = []
+    index_data_ref = None
+    
     # Load all 9 files and sum them
     for i in range(1, 10):
         try:
@@ -43,6 +47,11 @@ def load_and_plot_caled_data():
             index_data = np.load(f'{i}_index_center_ion_data.npy')
             
             print(f"Loaded data for index {i}, shape: {caled_data.shape}")
+            
+            # Store dataset for combined plot
+            all_datasets.append((i, caled_data))
+            if index_data_ref is None:
+                index_data_ref = index_data
             
             # Initialize summed_data with the shape of the first loaded data
             if summed_data is None:
@@ -63,6 +72,20 @@ def load_and_plot_caled_data():
             
         except Exception as e:
             print(f"Error processing index {i}: {e}")
+    
+    # Plot all datasets in the same figure with different colors
+    if all_datasets:
+        plt.figure(figsize=(12, 8))
+        for i, data in all_datasets:
+            plt.plot(index_data_ref, data, label=f'Index {i}')
+        plt.title('All Calibrated Datasets Comparison')
+        plt.xlabel('Time (ns)')
+        plt.ylabel('Counts')
+        plt.grid(True)
+        plt.legend()
+        plt.savefig('all_caled_datasets.png')
+        plt.close()
+        print("All datasets plotted together and saved successfully.")
     
     # Plot summed data
     if summed_data is not None:
