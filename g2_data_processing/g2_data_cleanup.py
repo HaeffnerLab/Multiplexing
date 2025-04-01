@@ -9,8 +9,8 @@ time_window_scale = 1.0  # Adjust this value to scale all time window widths
 # Time windows for the 9 ion positions - based on the identified peak centers
 # Reordered from closest to center to furthest away (negative side)
 # Define window centers and base half-widths
-window_centers = -np.array([-1.0, -13.0, -25.0, -37.0, -49.0, -60.5, -72.0, -84.5, -97.5])
-window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
+window_centers = -np.array([-13.0, -25.0, -37.0, -49.0, -60.5, -72.0, -84.5, -97.5])
+window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
 
 # Generate time windows with scaled widths
 time_windows = []
@@ -20,8 +20,8 @@ for center, half_width in zip(window_centers, window_half_widths):
 
 # Define corresponding positive time window centers and half-widths
 # Reordered from closest to center to furthest away (positive side)
-pos_window_centers = -np.array([3.0, 13.0, 25.0, 37.0, 49.0, 61.0, 73.0, 85.0, 97.0])
-pos_window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
+pos_window_centers = -np.array([13.0, 25.0, 37.0, 49.0, 61.0, 73.0, 85.0, 97.0])
+pos_window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
 
 # Generate positive time windows with scaled widths
 pos_time_windows = []
