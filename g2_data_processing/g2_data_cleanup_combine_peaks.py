@@ -196,7 +196,7 @@ def improved_align_all_peaks(data, time_bins, is_left=True):
     
     # Define a broader interpolation of the original data
     # This handles regions outside the original range by setting to 0
-    f_data = interp1d(time_bins, data, bounds_error=False, fill_value=0)
+    f_data = interp1d(time_bins, data, bounds_error=False, fill_value=0, kind='nearest')
     
     # For each window, create a shifted version of the data
     for window_key, peak_info in peaks_info.items():
@@ -311,7 +311,16 @@ def process_data_files():
         
         # Align peaks
         is_left = ion_type == 'left'
-        aligned_data, peaks_info = improved_align_all_peaks(data, time_bins, is_left)
+        
+        # Choose the alignment method:
+        # 1. Original method: directly copies the peak data without interpolation
+        # 2. Improved method with nearest interpolation
+        use_original_method = True  # Set to False to use improved method
+        
+        if use_original_method:
+            aligned_data, peaks_info = align_all_peaks(data, time_bins, is_left)
+        else:
+            aligned_data, peaks_info = improved_align_all_peaks(data, time_bins, is_left)
         
         # Create file names for saving
         base_name = os.path.splitext(os.path.basename(file_path))[0]
