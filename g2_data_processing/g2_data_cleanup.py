@@ -20,7 +20,7 @@ for center, half_width in zip(window_centers, window_half_widths):
 
 # Define corresponding positive time window centers and half-widths
 # Reordered from closest to center to furthest away (positive side)
-pos_window_centers = -np.array([13.0, 25.0, 37.0, 49.0, 61.0, 73.0, 85.0, 97.0])
+pos_window_centers = -np.array([-13.0, -25.0, -37.0, -49.0, -60.5, -72.0, -84.5, -97.5])
 pos_window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
 
 # Generate positive time windows with scaled widths
