@@ -3,32 +3,31 @@ import matplotlib.pyplot as plt
 import os
 import glob
 
-# Time windows for the 9 ion positions - based on the identified peak centers
-# Each window is now twice as large as before
-time_windows = [
-    (-99.5, -95.5),   # Position 1 (furthest left) - doubled width
-    (-86.5, -82.5),   # Position 2 - doubled width
-    (-74.0, -70.0),   # Position 3 - doubled width
-    (-62.5, -58.5),   # Position 4 - doubled width
-    (-51.0, -47.0),   # Position 5 - doubled width
-    (-39.0, -35.0),   # Position 6 - doubled width
-    (-27.0, -23.0),   # Position 7 - doubled width
-    (-15.0, -11.0),   # Position 8 - doubled width
-    (-3.0, 1.0)       # Position 9 (closest to center) - doubled width
-]
+# Scaling parameter for time window widths (1.0 = default width)
+time_window_scale = 1.0  # Adjust this value to scale all time window widths
 
-# Define corresponding positive time windows - also doubled in width
-pos_time_windows = [
-    (11.0, 15.0),     # Position 1 - doubled width
-    (23.0, 27.0),     # Position 2 - doubled width
-    (35.0, 39.0),     # Position 3 - doubled width
-    (47.0, 51.0),     # Position 4 - doubled width
-    (59.0, 63.0),     # Position 5 - doubled width
-    (71.0, 75.0),     # Position 6 - doubled width
-    (83.0, 87.0),     # Position 7 - doubled width
-    (95.0, 99.0),     # Position 8 - doubled width
-    (107.0, 111.0)    # Position 9 - doubled width
-]
+# Time windows for the 9 ion positions - based on the identified peak centers
+# Reordered from closest to center to furthest away (negative side)
+# Define window centers and base half-widths
+window_centers = -np.array([-1.0, -13.0, -25.0, -37.0, -49.0, -60.5, -72.0, -84.5, -97.5])
+window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
+
+# Generate time windows with scaled widths
+time_windows = []
+for center, half_width in zip(window_centers, window_half_widths):
+    scaled_half_width = half_width * time_window_scale
+    time_windows.append((center - scaled_half_width, center + scaled_half_width))
+
+# Define corresponding positive time window centers and half-widths
+# Reordered from closest to center to furthest away (positive side)
+pos_window_centers = -np.array([3.0, 13.0, 25.0, 37.0, 49.0, 61.0, 73.0, 85.0, 97.0])
+pos_window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
+
+# Generate positive time windows with scaled widths
+pos_time_windows = []
+for center, half_width in zip(pos_window_centers, pos_window_half_widths):
+    scaled_half_width = half_width * time_window_scale
+    pos_time_windows.append((center - scaled_half_width, center + scaled_half_width))
 
 # Load the index file from parent directory
 index_file_path = os.path.join('..', 'g2_data', '1_index_center_ion_data.npy')
@@ -37,28 +36,33 @@ time_bins = np.load(index_file_path)
 def process_left_ion_data(file_path, position_index):
     """
     Process left ion data files
-    Keep left (9-i) peaks, right (i-1) peaks, and the center peak
+    Keep peaks starting from the center and extending outward
     """
     data = np.load(file_path)
     
     # Create a mask of all zeros
     mask = np.zeros_like(data, dtype=bool)
     
-    # Identify where the time bins fall within the windows we want to keep
-    
-    # Center peak - always keep - now using wider window
+    # Always keep the center peak
     center_condition = (time_bins >= -3.0) & (time_bins <= 1.0)
     mask = mask | center_condition
     
-    # Keep left (9-position_index) peaks
-    for j in range(9-position_index):
-        left_condition = (time_bins >= time_windows[j][0]) & (time_bins <= time_windows[j][1])
-        mask = mask | left_condition
+    # For left ion at position i, we want to keep:
+    # 1. Center peak (always)
+    # 2. i peaks on the negative side (closest to center first)
+    # 3. (9-i) peaks on the positive side (closest to center first)
     
-    # Keep right (position_index-1) peaks
-    for j in range(position_index-1):
-        right_condition = (time_bins >= pos_time_windows[j][0]) & (time_bins <= pos_time_windows[j][1])
-        mask = mask | right_condition
+    # Keep i peaks on the negative side (starting from center)
+    for j in range(min(position_index, 9)):
+        if j < len(time_windows):
+            left_condition = (time_bins >= time_windows[j][0]) & (time_bins <= time_windows[j][1])
+            mask = mask | left_condition
+    
+    # Keep (9-i) peaks on the positive side (starting from center)
+    for j in range(min(9-position_index+1, 9)):
+        if j < len(pos_time_windows):
+            right_condition = (time_bins >= pos_time_windows[j][0]) & (time_bins <= pos_time_windows[j][1])
+            mask = mask | right_condition
     
     # Apply the mask
     cleaned_data = np.zeros_like(data)
@@ -69,28 +73,33 @@ def process_left_ion_data(file_path, position_index):
 def process_right_ion_data(file_path, position_index):
     """
     Process right ion data files
-    Keep left (i-1) peaks, right (9-i) peaks, and the center peak
+    Keep peaks starting from the center and extending outward
     """
     data = np.load(file_path)
     
     # Create a mask of all zeros
     mask = np.zeros_like(data, dtype=bool)
     
-    # Identify where the time bins fall within the windows we want to keep
-    
-    # Center peak - always keep - now using wider window
+    # Always keep the center peak
     center_condition = (time_bins >= -3.0) & (time_bins <= 1.0)
     mask = mask | center_condition
     
-    # Keep left (position_index-1) peaks
-    for j in range(position_index-1):
-        left_condition = (time_bins >= time_windows[j][0]) & (time_bins <= time_windows[j][1])
-        mask = mask | left_condition
+    # For right ion at position i, we want to keep:
+    # 1. Center peak (always)
+    # 2. (9-i) peaks on the negative side (closest to center first)
+    # 3. i peaks on the positive side (closest to center first)
     
-    # Keep right (9-position_index) peaks
-    for j in range(9-position_index):
-        right_condition = (time_bins >= pos_time_windows[j][0]) & (time_bins <= pos_time_windows[j][1])
-        mask = mask | right_condition
+    # Keep (9-i) peaks on the negative side (starting from center)
+    for j in range(min(9-position_index+1, 9)):
+        if j < len(time_windows):
+            left_condition = (time_bins >= time_windows[j][0]) & (time_bins <= time_windows[j][1])
+            mask = mask | left_condition
+    
+    # Keep i peaks on the positive side (starting from center)
+    for j in range(min(position_index, 9)):
+        if j < len(pos_time_windows):
+            right_condition = (time_bins >= pos_time_windows[j][0]) & (time_bins <= pos_time_windows[j][1])
+            mask = mask | right_condition
     
     # Apply the mask
     cleaned_data = np.zeros_like(data)
@@ -110,32 +119,34 @@ def plot_data(time_bins, cleaned_data, original_data, title, file_path, position
     
     # Plot vertical dashed lines to indicate time windows
     
-    # Center window - always included - now using wider window
-    plt.axvline(x=-3.0, color='g', linestyle='--', alpha=0.7)
-    plt.axvline(x=0.0, color='g', linestyle='--', alpha=0.7)
-    plt.axvline(x=1.0, color='g', linestyle='--', alpha=0.7)
+    # Always show the center window
+    center_window = time_windows[0]
+    plt.axvline(x=center_window[0], color='g', linestyle='--', alpha=0.7)
+    plt.axvline(x=center_window[1], color='g', linestyle='--', alpha=0.7)
     
-    # Left time windows
+    # Show windows for the peaks we're keeping
     if is_left:
-        # For left ion data: keep left (9-position_index) peaks
-        for j in range(9-position_index):
-            plt.axvline(x=time_windows[j][0], color='g', linestyle='--', alpha=0.7)
-            plt.axvline(x=time_windows[j][1], color='g', linestyle='--', alpha=0.7)
+        # For left ion data, show i peaks on negative side and (9-i) peaks on positive side
+        for j in range(min(position_index, 9)):
+            if j < len(time_windows):
+                plt.axvline(x=time_windows[j][0], color='g', linestyle='--', alpha=0.7)
+                plt.axvline(x=time_windows[j][1], color='g', linestyle='--', alpha=0.7)
         
-        # For left ion data: keep right (position_index-1) peaks
-        for j in range(position_index-1):
-            plt.axvline(x=pos_time_windows[j][0], color='g', linestyle='--', alpha=0.7)
-            plt.axvline(x=pos_time_windows[j][1], color='g', linestyle='--', alpha=0.7)
+        for j in range(min(9-position_index+1, 9)):
+            if j < len(pos_time_windows):
+                plt.axvline(x=pos_time_windows[j][0], color='g', linestyle='--', alpha=0.7)
+                plt.axvline(x=pos_time_windows[j][1], color='g', linestyle='--', alpha=0.7)
     else:
-        # For right ion data: keep left (position_index-1) peaks
-        for j in range(position_index-1):
-            plt.axvline(x=time_windows[j][0], color='g', linestyle='--', alpha=0.7)
-            plt.axvline(x=time_windows[j][1], color='g', linestyle='--', alpha=0.7)
+        # For right ion data, show (9-i) peaks on negative side and i peaks on positive side
+        for j in range(min(9-position_index+1, 9)):
+            if j < len(time_windows):
+                plt.axvline(x=time_windows[j][0], color='g', linestyle='--', alpha=0.7)
+                plt.axvline(x=time_windows[j][1], color='g', linestyle='--', alpha=0.7)
         
-        # For right ion data: keep right (9-position_index) peaks
-        for j in range(9-position_index):
-            plt.axvline(x=pos_time_windows[j][0], color='g', linestyle='--', alpha=0.7)
-            plt.axvline(x=pos_time_windows[j][1], color='g', linestyle='--', alpha=0.7)
+        for j in range(min(position_index, 9)):
+            if j < len(pos_time_windows):
+                plt.axvline(x=pos_time_windows[j][0], color='g', linestyle='--', alpha=0.7)
+                plt.axvline(x=pos_time_windows[j][1], color='g', linestyle='--', alpha=0.7)
     
     plt.title(title)
     plt.xlabel('Time (ns)')
