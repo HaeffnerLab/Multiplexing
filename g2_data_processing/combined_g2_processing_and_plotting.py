@@ -11,8 +11,8 @@ def process_g2_data(i):
     4. Saving the result
     """
     # Load the data files
-    left_data = np.load(f'f{i}_cleaned_left_ion_data.npy')
-    right_data = np.load(f'f{i}_cleaned_right_ion_data.npy')
+    left_data = np.load(f'f{i}_final_result_left_ion_data_aligned.npy')
+    right_data = np.load(f'f{i}_final_result_right_ion_data_aligned.npy')
     # center_data = np.load(f'g2_data/{i}_final_result_center_ion_data.npy')
     center_file_path = os.path.join('..', 'g2_data', f'{i}_final_result_center_ion_data.npy')
     center_data = np.load(center_file_path)
