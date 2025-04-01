@@ -13,7 +13,7 @@ time_window_scale = 1.0  # Adjust this value to scale all time window widths
 # Reordered from closest to center to furthest away (negative side)
 # Define window centers and base half-widths
 window_centers = -np.array([-13.0, -25.0, -37.0, -49.0, -60.5, -72.0, -84.5, -97.5])
-window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
+window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 2
 
 # Generate time windows with scaled widths
 time_windows = []
@@ -24,7 +24,7 @@ for center, half_width in zip(window_centers, window_half_widths):
 # Define corresponding positive time window centers and half-widths
 # Reordered from closest to center to furthest away (positive side)
 pos_window_centers = np.array([-13.0, -25.0, -37.0, -49.0, -60.5, -72.0, -84.5, -97.5])
-pos_window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 1.5
+pos_window_half_widths = np.array([2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]) * 2
 
 # Generate positive time windows with scaled widths
 pos_time_windows = []
@@ -46,7 +46,7 @@ def extract_peaks_in_windows(data, time_bins):
     peaks_info = {}
     
     # Process center peak first (assuming it exists around 0)
-    center_window = (-3.0, 3.0)
+    center_window = (-4.0, 4.0)
     center_mask = (time_bins >= center_window[0]) & (time_bins <= center_window[1])
     if np.any(center_mask):
         window_data = data[center_mask]
