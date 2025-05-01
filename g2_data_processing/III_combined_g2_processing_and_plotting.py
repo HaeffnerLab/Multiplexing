@@ -95,6 +95,7 @@ def load_and_plot_caled_data():
     
     # Plot summed data
     if summed_data is not None:
+        np.save('summed_caled_data_index.npy', index_data)
         np.save('summed_caled_data.npy', summed_data)
         plt.figure(figsize=(12, 8))
         plt.plot(index_data, summed_data)
