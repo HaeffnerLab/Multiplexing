@@ -1,6 +1,6 @@
-numpy==2.0.2
+numpy==1.20.3
 brokenaxes
-scipy==1.13.1
+scipy==1.7.3
 matplotlib==3.5.3
 qutip==4.7.0
 h5py==3.6.0
