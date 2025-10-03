@@ -274,7 +274,7 @@ def ion_shuttling_heating(T):
 
     # Initial conditions setup
     omega_value, x0_value = cal_omega(DC1_voltage_array[0], DC2_voltage_array[0], 1e-4, False)
-    omega_value = omega_value * 179.96 / 188432.3348049441
+    omega_value = omega_value * 179.96 / 188.432
     print("\nthe omega_value, x0_value", omega_value/(2*np.pi), x0_value)
 
     x0 = x0_value
