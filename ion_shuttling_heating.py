@@ -161,6 +161,7 @@ def plot_voltage_time(time_array, scaled_voltage_array, pdf_filename):
     # plt.show()
 
 def ion_shuttling_heating(T):
+    T = T / 0.63494002
     points = 3000000  # Number of points at which to evaluate the solution
     filepath = 'shuttling_function.csv'
     # filepath = 'RigolDS0_123.csv'
@@ -416,7 +417,7 @@ for i in range(len(list)):
     # Parameters for the simulation
     method = 'RK45'
     voltage_change_factor = 1.00  # The factor to change the voltage
-    T_factor = (121 / 133.93969396934) * list[i]  # The time factor for the simulation
+    T_factor = (121 / 133.93969396934) * list[i] * 0.63494002  # The time factor for the simulation
     NUM_VOLTAGE_POINTS = 500  # The points for voltage sampling
     T = 150 * 1e-6 * T_factor # Total time duration in s unit
     n_bar = ion_shuttling_heating(T)
