@@ -39,12 +39,12 @@ pi = math.pi
 h_bar = 1.0546e-34
 
 # Parameters for the simulation
-T_factor = (121 / 133.93969396934) * 1.1625  # The time factor for the simulation
-voltage_change_factor = 1.00  # The factor to change the voltage
-NUM_VOLTAGE_POINTS = 500  # The points for voltage sampling
-T = 150 * 1e-6 * T_factor # Total time duration in s unit
-points = 3000000  # Number of points at which to evaluate the solution
-method = 'RK45'
+# T_factor = (121 / 133.93969396934) * 1.1625  # The time factor for the simulation
+# voltage_change_factor = 1.00  # The factor to change the voltage
+# NUM_VOLTAGE_POINTS = 500  # The points for voltage sampling
+# T = 150 * 1e-6 * T_factor # Total time duration in s unit
+# points = 3000000  # Number of points at which to evaluate the solution
+# method = 'RK45'
 
 def pfit(x_data, y_data, degree, plot=False):
     """
@@ -155,16 +155,7 @@ def plot_voltage_time(time_array, scaled_voltage_array, pdf_filename):
     # plt.savefig(pdf_filename, format='pdf', bbox_inches='tight')
     # plt.show()
 
-# list = points = np.linspace(1.25, 1.7, 2)
-list=points=[1.25]
-results = []
-total_results = []
-
-for i in range(len(list)):
-    # Parameters for the simulation
-    T_factor = (121 / 133.93969396934) * list[i]  # The time factor for the simulation
-    NUM_VOLTAGE_POINTS = 500  # The points for voltage sampling
-    T = 150 * 1e-6 * T_factor # Total time duration in s unit
+def ion_shuttling_heating(T):
     points = 3000000  # Number of points at which to evaluate the solution
     filepath = 'shuttling_function.csv'
     # filepath = 'RigolDS0_123.csv'
@@ -385,10 +376,25 @@ for i in range(len(list)):
     quantum = h_bar * omega_value
     real_amplitudes = np.array(amplitudes) * 1e-6
     n_bar = [0.25 * m * omega_value**2 * amplitude**2 / quantum for amplitude in real_amplitudes]
+
+    return n_bar
+
+# list = points = np.linspace(1.25, 1.7, 2)
+list=points=[1.25]
+results = []
+total_results = []
+
+for i in range(len(list)):
+    # Parameters for the simulation
+    method = 'RK45'
+    voltage_change_factor = 1.00  # The factor to change the voltage
+    T_factor = (121 / 133.93969396934) * list[i]  # The time factor for the simulation
+    NUM_VOLTAGE_POINTS = 500  # The points for voltage sampling
+    T = 150 * 1e-6 * T_factor # Total time duration in s unit
+    n_bar = ion_shuttling_heating(T)
     print(n_bar)
     results.append(n_bar[0])
     total_results.append(n_bar)
     print(f"Current list of shuttling time in us (T): {T} with heating {n_bar[0]} quanta")
     print("\nCurrent final results: ", results)
 print(results)
-
