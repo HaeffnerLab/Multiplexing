@@ -5,7 +5,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
+# Numerical tools
 from scipy.integrate import solve_ivp
+from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter
 from scipy.optimize import fsolve, leastsq,root,brentq,newton,curve_fit
 from sympy.utilities.lambdify import lambdify
@@ -37,6 +39,9 @@ e = 1.6e-19
 m = 6.64215627e-26
 pi = math.pi
 h_bar = 1.0546e-34
+
+# Pre‑compute constant that appears inside the ODE so it is evaluated only once
+coulomb_factor = e ** 2 / (4 * pi * E0)
 
 # Parameters for the simulation
 # T_factor = (121 / 133.93969396934) * 1.1625  # The time factor for the simulation
@@ -169,70 +174,80 @@ def ion_shuttling_heating(T):
     print("First 5 elements of scaled_voltage_array:", scaled_voltage_array[:5])
     print("The time range = ", time_array[-1], " us")
 
-    # Plotting
+    # Plotting preparation (optional, kept but commented to avoid I/O overhead)
     time_array = np.load("time_array.npy") * 1e-6
     DC1_voltage_array = np.load("DC1_voltage_array.npy") * voltage_change_factor
-    # DC1_voltage_array = np.ones(len(DC1_voltage_array)) * DC1_voltage_array[0]
     DC2_voltage_array = np.load("DC2_voltage_array.npy") * voltage_change_factor
-    # DC2_voltage_array = np.ones(len(DC2_voltage_array)) * DC2_voltage_array[0]
-    plot_voltage_time(time_array * 1e6, scaled_voltage_array, 'Shuttling_function_new.pdf')
 
-    half_column_width_inches = 4.25
+    # plot_voltage_time(time_array * 1e6, scaled_voltage_array, 'Shuttling_function_new.pdf')
+
+    # ---------------------------------------------------------------------
+    # 1. Pre‑compute ω(t) and x₀(t) on the waveform grid and build
+    #    cubic‑spline interpolants so that the ODE does not need to call the
+    #    expensive harmonic fit at every RHS evaluation.
+    # ---------------------------------------------------------------------
+
+    half_column_width_inches = 4.25  # kept for potential plotting later
     aspect_ratio = 2
 
-    data_dc1 = np.loadtxt('/Users/bingran_you/Documents/GitHub_MacBook/Multiplexing/ion-shuttling/DC1.csv', delimiter=',', skiprows=9)
-    data_dc2 = np.loadtxt('/Users/bingran_you/Documents/GitHub_MacBook/Multiplexing/ion-shuttling/DC2.csv', delimiter=',', skiprows=9)
-
-    # data_dc1 = DC1_voltage_array
-    # data_dc2 = DC2_voltage_array
+    # Load electrode potential files once
+    data_dc1 = np.loadtxt('/Users/bingran_you/Documents/GitHub_MacBook/Multiplexing/ion-shuttling/DC1.csv',
+                          delimiter=',', skiprows=9)
+    data_dc2 = np.loadtxt('/Users/bingran_you/Documents/GitHub_MacBook/Multiplexing/ion-shuttling/DC2.csv',
+                          delimiter=',', skiprows=9)
 
     def cal_omega(DC1, DC2, delta_x, plot):
-        V1 = 1.6e-19 * DC1 * data_dc1[:, 3]
-        V2 = 1.6e-19 * DC2 * data_dc2[:, 3]
-        V = V1 + V2
-        z = 1e-3 * data_dc1[:, 2]
-        a, b, c = v_har(delta_x, z, V, plot)
+        """Return (ω, x₀) for given electrode scalings (no plotting)."""
+        V1 = e * DC1 * data_dc1[:, 3]
+        V2 = e * DC2 * data_dc2[:, 3]
+        V  = V1 + V2
+        z  = 1e-3 * data_dc1[:, 2]
+        a, b, _ = v_har(delta_x, z, V, plot)
         omega = np.sqrt(2 * a / m)
-        x_0 = -b / (m * omega ** 2)
-        return omega*1.10, x_0
-        # return 1076322.9794945174, 5.5703264876617695e-05
+        x_0   = -b / (m * omega**2)
+        return omega * 1.10, x_0
+
+    # Vectorised pre‑computation on the full voltage trace
+    omega_values = np.empty_like(time_array)
+    x0_values    = np.empty_like(time_array)
+    for idx, (v1, v2) in enumerate(zip(DC1_voltage_array, DC2_voltage_array)):
+        omega_values[idx], x0_values[idx] = cal_omega(v1, v2, 1e-4, False)
+
+    # Build fast cubic splines for use inside the ODE (extrapolate outside range)
+    # Use zero‑order hold (nearest) to match original piece‑wise constant
+    omega_of_t = interp1d(time_array, omega_values, kind='nearest', fill_value="extrapolate")
+    x0_of_t    = interp1d(time_array, x0_values,    kind='nearest', fill_value="extrapolate")
+
+    # ---------------------------------------------------------------------
+    # 2. Right‑hand side of the differential equations – now fully vectorised
+    # ---------------------------------------------------------------------
 
     def ode_csv(t, y):
-        # Unpack position and velocity variables
-        x1, x2, x3, x4, x5, x6, x7, x8, x9, v1, v2, v3, v4, v5, v6, v7, v8, v9 = y
+        # Split positions and velocities
+        pos = y[:9]
+        vel = y[9:]
 
-        # Determine the closest time index for 't' and calculate omega and x0 values
-        index_t = np.argmin(np.abs(time_array - t))
-        omega_value, x0_value = cal_omega(DC1_voltage_array[index_t], DC2_voltage_array[index_t], 1e-4, False)
-        # omega_value = 1076322.9794945174
+        # Trap parameters at this time (interpolated)
+        omega_val = float(omega_of_t(t))
+        x0_val    = float(x0_of_t(t))
 
-        # Print omega and x0 at the beginning of the simulation
-        if t == 0:
-            print(omega_value, x0_value)
+        # Harmonic part a x + b
+        a = -m * omega_val**2
+        b = m * omega_val**2 * x0_val
 
-        # Constants for the equations of motion
-        a = -m * omega_value**2
-        b = m * omega_value**2 * x0_value
-        coulomb_factor = e**2 / (4 * np.pi * E0)
+        # Vectorised Coulomb term
+        diff = pos[:, None] - pos[None, :]
+        np.fill_diagonal(diff, np.inf)  # avoid zero division on the diagonal
+        # Match the original sign convention: coefficient = -sign(diff)/(diff^2)
+        coulomb_sum = coulomb_factor * np.sum(-np.sign(diff) / diff**2, axis=1)
 
-        # Derivatives of positions are the velocities
-        dx_dt = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
+        accel = (a * pos + b - coulomb_sum) / m
 
-        # Calculate the derivatives of velocities (dv/dt) considering Coulomb repulsion
-        dv_dt = [
-            1/m * (a * x1 + b - coulomb_factor * (sum(1 / (x1 - x)**2 for x in [x2, x3, x4, x5, x6, x7, x8, x9]))),
-            1/m * (a * x2 + b - coulomb_factor * (-1 / (x2 - x1)**2 + sum(1 / (x2 - x)**2 for x in [x3, x4, x5, x6, x7, x8, x9]))),
-            1/m * (a * x3 + b - coulomb_factor * (sum(-1 / (x3 - x)**2 for x in [x1, x2]) + sum(1 / (x3 - x)**2 for x in [x4, x5, x6, x7, x8, x9]))),
-            1/m * (a * x4 + b - coulomb_factor * (sum(-1 / (x4 - x)**2 for x in [x1, x2, x3]) + sum(1 / (x4 - x)**2 for x in [x5, x6, x7, x8, x9]))),
-            1/m * (a * x5 + b - coulomb_factor * (sum(-1 / (x5 - x)**2 for x in [x1, x2, x3, x4]) + sum(1 / (x5 - x)**2 for x in [x6, x7, x8, x9]))),
-            1/m * (a * x6 + b - coulomb_factor * (sum(-1 / (x6 - x)**2 for x in [x1, x2, x3, x4, x5]) + sum(1 / (x6 - x)**2 for x in [x7, x8, x9]))),
-            1/m * (a * x7 + b - coulomb_factor * (sum(-1 / (x7 - x)**2 for x in [x1, x2, x3, x4, x5, x6]) + sum(1 / (x7 - x)**2 for x in [x8, x9]))),
-            1/m * (a * x8 + b - coulomb_factor * (sum(-1 / (x8 - x)**2 for x in [x1, x2, x3, x4, x5, x6, x7]) + 1 / (x8 - x9)**2)),
-            1/m * (a * x9 + b - coulomb_factor * (sum(-1 / (x9 - x)**2 for x in [x1, x2, x3, x4, x5, x6, x7, x8])))
-        ]
-
-        # Return the concatenated list of position and velocity derivatives
-        return dx_dt + dv_dt
+        # Concatenate derivatives
+        dydt = np.empty_like(y)
+        dydt[:9] = vel
+        dydt[9:] = accel
+        return dydt
 
     def Eqposition3(N):
         # Define the equations to solve
@@ -281,13 +296,16 @@ def ion_shuttling_heating(T):
 
     # initial_state = np.array([17.083695539177068, 28.47478293928541, 38.13198342382467, 47.06403296135834, 55.70326497634435, 64.34249664063852, 73.27454636648979, 82.93174679858147, 94.3228342153568, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) / 1e6
 
-    # Solve the differential equations using 'solve_ivp'
-    # solution = solve_ivp(ode_csv, (0, T), initial_state, t_eval=np.linspace(0, T, points))
-    solution = solve_ivp(ode_csv, (0, T), initial_state, method=method, t_eval=np.linspace(0, T, points), atol=1e-10, rtol=1e-8)
+    # Integrate with adaptive step size and dense output.  We will sample
+    # the solution afterwards instead of forcing the solver to hit every
+    # point on a huge uniform grid.
+    solution = solve_ivp(ode_csv, (0, T), initial_state, method=method,
+                         atol=1e-10, rtol=1e-8, dense_output=True)
 
-    # Extract time points and positions from the solution
-    time_points = solution.t
-    positions = solution.y[:9]  # Extracting only the positions of the ions
+    # Choose a much lighter sampling grid for post‑processing.
+    sample_points = 300_000  # adjust if finer output is required
+    time_points = np.linspace(0, T, sample_points)
+    positions = solution.sol(time_points)[:9]
 
     # Time windows
     start_time_array = np.array([0, 13e-6, 25e-6, 37e-6, 49e-6, 61e-6, 73e-6, 85e-6, 97e-6, 140e-6]) * 1e6 * T_factor
@@ -332,19 +350,19 @@ def ion_shuttling_heating(T):
 
     print(len(positions[1]))
 
-    # Extract time points and positions from the solution
-    time_points = solution.t
-    positions = solution.y[:9]  # Extracting only the positions of the ions
-    t_eval = np.linspace(0, T, points)
-    dt = np.mean(np.diff(time_array))  # Assuming evenly spaced
-    indices = np.floor((t_eval - time_array[0]) / dt).astype(int)
-    indices = np.clip(indices, 0, len(time_array) - 1)  # Ensure indices are within bounds
-    cal_omega_vectorized = np.vectorize(cal_omega, excluded=['eps', 'verbose'])
-    omega_values, x0_values = cal_omega_vectorized(DC1_voltage_array[indices], DC2_voltage_array[indices], 1e-4, False)
-    positions_um = positions * 1e6
-    x0_value_array_um = np.array(x0_values) * 1e6
+    # 'time_points' and 'positions' are already defined from sampling the
+    # dense solution above.  Avoid overwriting them with the sparse solver
+    # output.
+    # Interpolated ω(t) and x₀(t) on the same sampling grid
+    omega_values_sampled = omega_of_t(time_points)
+    x0_values_sampled    = x0_of_t(time_points)
 
-    positions_modes = nor_cor9(np.array([positions[0] - x0_values, positions[1] - x0_values, positions[2] - x0_values, positions[3] - x0_values, positions[4] - x0_values, positions[5] - x0_values, positions[6] - x0_values, positions[7] - x0_values, positions[8] - x0_values])) / 3
+    positions_um = positions * 1e6
+    x0_value_array_um = np.array(x0_values_sampled) * 1e6
+
+    # Subtract x0 from each ion position before mode projection
+    pos_minus_x0 = positions - x0_values_sampled
+    positions_modes = nor_cor9(pos_minus_x0) / 3
 
     factor = 0.34 * 1.0004196441454332
     for i, pos in enumerate(positions_modes, start=1):
@@ -364,10 +382,18 @@ def ion_shuttling_heating(T):
 
     # Calculate amplitude in these time windows
     time_points_us = time_points * 1e6  # Convert time_points to microseconds
+
+    # ------------------------------------------------------------------
+    #  Calculate amplitudes only in the final 10 % of the simulation, to
+    #  match the original code behaviour (it previously used the last
+    #  300 000 samples out of 3 000 000).
+    # ------------------------------------------------------------------
+
+    tail_fraction = 0.10
+    start_time = time_points_us[int((1 - tail_fraction) * len(time_points_us))]
+    stop_time  = time_points_us[-1]
+
     amplitudes = []
-    # start_time = time_points_us[-15000 * 20]
-    start_time = time_points_us[-15000 * 20]
-    stop_time = time_points_us[-1]
     for i, pos in enumerate(positions_modes, start=1):
         mask = (time_points_us >= start_time) & (time_points_us <= stop_time)
         amplitude = (pos * 1e6)[mask].max() - (pos * 1e6)[mask].min()
