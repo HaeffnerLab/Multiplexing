@@ -273,7 +273,9 @@ def ion_shuttling_heating(T):
 
     # Initial conditions setup
     omega_value, x0_value = cal_omega(DC1_voltage_array[0], DC2_voltage_array[0], 1e-4, False)
-    # print(omega_value, x0_value)
+    omega_value = omega_value * 179.96 / 188432.3348049441
+    print("\nthe omega_value, x0_value", omega_value/(2*np.pi), x0_value)
+
     x0 = x0_value
     print("The initial position: ", x0_value)
     omega0 = omega_value
@@ -406,7 +408,7 @@ def ion_shuttling_heating(T):
     return n_bar
 
 # list = points = np.linspace(1.25, 1.7, 2)
-list=points=[1.25]
+list=points=[1.9]
 results = []
 total_results = []
 
