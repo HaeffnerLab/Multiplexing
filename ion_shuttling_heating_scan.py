@@ -39,8 +39,9 @@ from ion_shuttling_heating import ion_shuttling_heating
 # Configuration
 # ---------------------------------------------------------------------------
 
-# Requested total shuttling times (in µs) – EDIT AS REQUIRED
-TARGET_TIMES_US: List[float] = list(range(50, 205, 10))  # 50 µs → 200 µs in 10 µs steps
+# Requested total shuttling times (in µs).
+# 200 evenly‑spaced points between 50 µs and 200 µs (inclusive).
+TARGET_TIMES_US: List[float] = np.linspace(50, 200, 200).tolist()
 
 RESULT_CSV = Path("heating_scan_results.csv")
 PLOT_PDF   = Path("nbar_vs_T.pdf")
@@ -88,6 +89,7 @@ def _plot(df: pd.DataFrame) -> None:
 
     fig, ax = plt.subplots(figsize=(4.25, 3))  # half‑column width
     ax.plot(df_sorted["T_us"], df_sorted["nbar_mode1"], "o-", lw=1.8)
+    ax.set_yscale("log")
     ax.set_xlabel(r"Shuttling time $T$ (µs)")
     ax.set_ylabel(r"$\bar{n}$ (mode 1)")
     ax.set_title(r"Heating versus shuttling time")
