@@ -386,6 +386,7 @@ for i in range(len(list)):
     print(n_bar)
     results.append(n_bar[0])
     total_results.append(n_bar)
+    print(f"Current list of shuttling time in us (T): {T} with heating {n_bar[0]} quanta")
     print("\nCurrent final results: ", results)
 print(results)
 
