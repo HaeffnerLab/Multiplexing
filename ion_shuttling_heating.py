@@ -62,11 +62,11 @@ def pfit(x_data, y_data, degree, plot=False):
     coeffs = np.polyfit(x_data, y_data, degree)
     poly = np.poly1d(coeffs)
     y_fit = poly(x_data)
-    if plot:
-        plt.plot(x_data, y_data, label='Original')
-        plt.plot(x_data, y_fit, label='Fit')
-        plt.legend()
-        plt.show()
+    # if plot:
+    #     plt.plot(x_data, y_data, label='Original')
+    #     plt.plot(x_data, y_fit, label='Fit')
+    #     plt.legend()
+    #     plt.show()
     return coeffs
 
 def v_har(delta_x, x_data, y_data, plot=False):
@@ -96,13 +96,13 @@ def v_har(delta_x, x_data, y_data, plot=False):
     poly = np.poly1d(coeffs)
     y_fit = poly(x_data)
 
-    if plot:
-        plt.plot(x_data, y_data, label='Original')
-        plt.plot(x_data, y_fit, label='Fit')
-        plt.xlabel('x/m')
-        plt.ylabel('Potential Energy/J')
-        plt.legend()
-        plt.show()
+    # if plot:
+    #     plt.plot(x_data, y_data, label='Original')
+    #     plt.plot(x_data, y_fit, label='Fit')
+    #     plt.xlabel('x/m')
+    #     plt.ylabel('Potential Energy/J')
+    #     plt.legend()
+    #     plt.show()
 
     return coeffs
 
@@ -143,19 +143,20 @@ def plot_voltage_time(time_array, scaled_voltage_array, pdf_filename):
     """Plots the voltage array over time and saves the plot to a PDF."""
     half_column_width_inches = 4.25
     aspect_ratio = 2
-    plt.figure(figsize=(half_column_width_inches, half_column_width_inches / aspect_ratio))
-    plt.title('Shuttling function', fontdict={'family': 'STIXGeneral', 'size': 12})
-    plt.plot(time_array, scaled_voltage_array, 'C0', linewidth=2.5, label='Programmed waveform')
-    plt.axvline(13 * T_factor, color='r', linewidth=0.5, linestyle='--')
-    plt.axvline((15) * T_factor, color='r', linewidth=0.5, linestyle='--')
-    plt.xlabel(r'Time ($\mu$$s$)', fontdict={'family': 'STIXGeneral', 'size': 12})
-    plt.ylabel('Voltage (V)', fontdict={'family': 'STIXGeneral', 'size': 12})
-    plt.grid(True)
-    plt.legend()
-    plt.savefig(pdf_filename, format='pdf', bbox_inches='tight')
-    plt.show()
+    # plt.figure(figsize=(half_column_width_inches, half_column_width_inches / aspect_ratio))
+    # plt.title('Shuttling function', fontdict={'family': 'STIXGeneral', 'size': 12})
+    # plt.plot(time_array, scaled_voltage_array, 'C0', linewidth=2.5, label='Programmed waveform')
+    # plt.axvline(13 * T_factor, color='r', linewidth=0.5, linestyle='--')
+    # plt.axvline((15) * T_factor, color='r', linewidth=0.5, linestyle='--')
+    # plt.xlabel(r'Time ($\mu$$s$)', fontdict={'family': 'STIXGeneral', 'size': 12})
+    # plt.ylabel('Voltage (V)', fontdict={'family': 'STIXGeneral', 'size': 12})
+    # plt.grid(True)
+    # plt.legend()
+    # plt.savefig(pdf_filename, format='pdf', bbox_inches='tight')
+    # plt.show()
 
-list = points = np.linspace(1.25, 1.7, 2)
+# list = points = np.linspace(1.25, 1.7, 2)
+list=points=[1.25]
 results = []
 total_results = []
 
@@ -301,9 +302,9 @@ for i in range(len(list)):
     start_time_array = np.array([0, 13e-6, 25e-6, 37e-6, 49e-6, 61e-6, 73e-6, 85e-6, 97e-6, 140e-6]) * 1e6 * T_factor
     stop_time_array = np.array([2e-6, 15e-6, 27e-6, 39e-6, 51e-6, 63e-6, 75e-6, 87e-6, 99e-6, 150e-6]) * 1e6 * T_factor
 
-    for i in range(9):
-        if(True):
-            plt.plot(time_points * 1e6, (positions[i] - positions[i][0]) * 1e6, lw=2, label=f'ion {i}')
+    # for i in range(9):
+    #     if(True):
+    #         plt.plot(time_points * 1e6, (positions[i] - positions[i][0]) * 1e6, lw=2, label=f'ion {i}')
 
     for i in range(9):
         print(np.average(positions[i]) * 1e6)
@@ -359,15 +360,16 @@ for i in range(len(list)):
         # plt.scatter(time_points * 1e6, pos * 1e6, s=0.2, label=f'Mode {i}')
         if(i != 2):
             if(i == 8):
-                plt.plot(time_points * 1e6, np.abs(pos - pos[0]) * 1e6 / factor, lw=1, c="C1", label=f'Mode {i}')
+                # plt.plot(time_points * 1e6, np.abs(pos - pos[0]) * 1e6 / factor, lw=1, c="C1", label=f'Mode {i}')
                 continue
             if(i == 1):
-                plt.plot(time_points * 1e6, np.abs(pos - pos[0]) * 1e6 / factor, lw=1, c="black", alpha = 0.7, label=f'Mode {i}')
+                # plt.plot(time_points * 1e6, np.abs(pos - pos[0]) * 1e6 / factor, lw=1, c="black", alpha = 0.7, label=f'Mode {i}')
                 print(np.max(np.abs(pos - pos[0]) * 1e6 / factor))
                 continue
-            plt.plot(time_points * 1e6, np.abs(pos - pos[0]) * 1e6 / factor, lw=1, label=f'Mode {i}')
+            # plt.plot(time_points * 1e6, np.abs(pos - pos[0]) * 1e6 / factor, lw=1, label=f'Mode {i}')
         else:
-            plt.plot(time_points * 1e6, np.abs(pos - pos[0]) * 1e6 / factor, lw=1, label=f'Mode {i}')
+            # plt.plot(time_points * 1e6, np.abs(pos - pos[0]) * 1e6 / factor, lw=1, label=f'Mode {i}')
+            continue
 
     # Calculate amplitude in these time windows
     time_points_us = time_points * 1e6  # Convert time_points to microseconds
