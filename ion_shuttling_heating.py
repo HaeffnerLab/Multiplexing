@@ -198,42 +198,61 @@ def ion_shuttling_heating(T):
         return omega*1.10, x_0
         # return 1076322.9794945174, 5.5703264876617695e-05
 
+    # ------------------------------------------------------------------
+    # Pre‑compute trap parameters (ω and x0) for every time point once.
+    # Use fast linear interpolation inside the ODE callback instead of the
+    # expensive per‑step polynomial fit that was previously performed.
+    # ------------------------------------------------------------------
+
+    # Vectorised calculation of ω(t) and x0(t) over the shuttling waveform
+    omega_t = np.empty_like(time_array)
+    x0_t = np.empty_like(time_array)
+    for idx, (v1, v2) in enumerate(zip(DC1_voltage_array, DC2_voltage_array)):
+        omega_t[idx], x0_t[idx] = cal_omega(v1, v2, 1e-4, False)
+
+    # Build cheap interpolators that the ODE routine can query
+    from scipy.interpolate import interp1d
+    omega_interp = interp1d(time_array, omega_t, kind='linear', fill_value='extrapolate')
+    x0_interp = interp1d(time_array, x0_t, kind='linear', fill_value='extrapolate')
+
+    coulomb_factor = e**2 / (4 * np.pi * E0)
+
     def ode_csv(t, y):
-        # Unpack position and velocity variables
-        x1, x2, x3, x4, x5, x6, x7, x8, x9, v1, v2, v3, v4, v5, v6, v7, v8, v9 = y
+        """Equations of motion for the 9‑ion chain (1D axial)."""
 
-        # Determine the closest time index for 't' and calculate omega and x0 values
-        index_t = np.argmin(np.abs(time_array - t))
-        omega_value, x0_value = cal_omega(DC1_voltage_array[index_t], DC2_voltage_array[index_t], 1e-4, False)
-        # omega_value = 1076322.9794945174
+        # Split state vector – first 9 positions then 9 velocities
+        x = np.asarray(y[:9])
+        v = np.asarray(y[9:])
 
-        # Print omega and x0 at the beginning of the simulation
-        if t == 0:
-            print(omega_value, x0_value)
+        # Trap parameters at time t (linear interpolation)
+        omega_val = float(omega_interp(t))
+        x0_val = float(x0_interp(t))
 
-        # Constants for the equations of motion
-        a = -m * omega_value**2
-        b = m * omega_value**2 * x0_value
-        coulomb_factor = e**2 / (4 * np.pi * E0)
+        # Harmonic well contribution
+        a = -m * omega_val ** 2
+        b = m * omega_val ** 2 * x0_val
 
-        # Derivatives of positions are the velocities
-        dx_dt = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
+        # Build pair‑wise distance matrix once
+        diff = x[:, None] - x[None, :]
+        # Avoid division by zero on the diagonal
+        # Set diagonal to infinity to avoid self‑interaction (will be zero after inversion)
+        diff[np.diag_indices(9)] = np.inf
+        inv_sq = 1.0 / diff ** 2
+        inv_sq[np.diag_indices(9)] = 0.0
 
-        # Calculate the derivatives of velocities (dv/dt) considering Coulomb repulsion
-        dv_dt = [
-            1/m * (a * x1 + b - coulomb_factor * (sum(1 / (x1 - x)**2 for x in [x2, x3, x4, x5, x6, x7, x8, x9]))),
-            1/m * (a * x2 + b - coulomb_factor * (-1 / (x2 - x1)**2 + sum(1 / (x2 - x)**2 for x in [x3, x4, x5, x6, x7, x8, x9]))),
-            1/m * (a * x3 + b - coulomb_factor * (sum(-1 / (x3 - x)**2 for x in [x1, x2]) + sum(1 / (x3 - x)**2 for x in [x4, x5, x6, x7, x8, x9]))),
-            1/m * (a * x4 + b - coulomb_factor * (sum(-1 / (x4 - x)**2 for x in [x1, x2, x3]) + sum(1 / (x4 - x)**2 for x in [x5, x6, x7, x8, x9]))),
-            1/m * (a * x5 + b - coulomb_factor * (sum(-1 / (x5 - x)**2 for x in [x1, x2, x3, x4]) + sum(1 / (x5 - x)**2 for x in [x6, x7, x8, x9]))),
-            1/m * (a * x6 + b - coulomb_factor * (sum(-1 / (x6 - x)**2 for x in [x1, x2, x3, x4, x5]) + sum(1 / (x6 - x)**2 for x in [x7, x8, x9]))),
-            1/m * (a * x7 + b - coulomb_factor * (sum(-1 / (x7 - x)**2 for x in [x1, x2, x3, x4, x5, x6]) + sum(1 / (x7 - x)**2 for x in [x8, x9]))),
-            1/m * (a * x8 + b - coulomb_factor * (sum(-1 / (x8 - x)**2 for x in [x1, x2, x3, x4, x5, x6, x7]) + 1 / (x8 - x9)**2)),
-            1/m * (a * x9 + b - coulomb_factor * (sum(-1 / (x9 - x)**2 for x in [x1, x2, x3, x4, x5, x6, x7, x8])))
-        ]
+        # Coulomb term – mimic the original asymmetric summations
+        #   F_i = −Σ_{j<i} (−1)/(x_i−x_j)^2  − Σ_{j>i} 1/(x_i−x_j)^2
+        # This can be implemented by subtracting the column sums with the
+        # correct signs.
+        upper = np.triu(inv_sq, 1)   # j>i part
+        lower = np.tril(inv_sq, -1)  # j<i part
+        coulomb_force = -coulomb_factor * (-lower.sum(axis=1) + upper.sum(axis=1))
 
-        # Return the concatenated list of position and velocity derivatives
-        return dx_dt + dv_dt
+        # Accelerations
+        dv_dt = (a * x + b + coulomb_force) / m
+
+        # Pack derivatives back: dx/dt = v, dv/dt as above
+        return np.concatenate([v, dv_dt])
 
     def Eqposition3(N):
         # Define the equations to solve
@@ -335,13 +354,12 @@ def ion_shuttling_heating(T):
 
     # Extract time points and positions from the solution
     time_points = solution.t
-    positions = solution.y[:9]  # Extracting only the positions of the ions
-    t_eval = np.linspace(0, T, points)
-    dt = np.mean(np.diff(time_array))  # Assuming evenly spaced
-    indices = np.floor((t_eval - time_array[0]) / dt).astype(int)
-    indices = np.clip(indices, 0, len(time_array) - 1)  # Ensure indices are within bounds
-    cal_omega_vectorized = np.vectorize(cal_omega, excluded=['eps', 'verbose'])
-    omega_values, x0_values = cal_omega_vectorized(DC1_voltage_array[indices], DC2_voltage_array[indices], 1e-4, False)
+    positions = solution.y[:9]  # Extract positions of the ions only
+
+    # Re‑use the fast interpolators for ω and x0 to obtain the values
+    omega_values = omega_interp(time_points)
+    x0_values = x0_interp(time_points)
+
     positions_um = positions * 1e6
     x0_value_array_um = np.array(x0_values) * 1e6
 

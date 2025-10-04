@@ -43,7 +43,7 @@ from ion_shuttling_heating import ion_shuttling_heating
 # 200 evenly‑spaced points between 50 µs and 200 µs (inclusive).
 TARGET_TIMES_US: List[float] = np.linspace(50, 200, 200).tolist()
 
-RESULT_CSV = Path("heating_scan_results.csv")
+RESULT_CSV = Path("heating_scan_results_new.csv")
 PLOT_PDF   = Path("nbar_vs_T.pdf")
 
 # Internal – the original script multiplies the time argument by
